@@ -5,6 +5,10 @@ export const useTetris = () => {
   const [board, setBoard] = useState(createStage());
   const [player, setPlayer] = useState({ pos: { x: 0, y: 0 }, tetromino: TETROMINOES[0 as keyof typeof TETROMINOES].shape, collided: false });
   const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(() => {
+    const saved = localStorage.getItem('modernTetrisHighScore');
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [level, setLevel] = useState(1);
   const [lines, setLines] = useState(0);
   const [gameOver, setGameOver] = useState(true);
@@ -12,13 +16,20 @@ export const useTetris = () => {
   const [nextPiece, setNextPiece] = useState(randomTetromino());
   const [holdPiece, setHoldPiece] = useState<any>(null);
   const [canHold, setCanHold] = useState(true);
+  const [lastClear, setLastClear] = useState(0); // For animation triggers
 
-  // Ghost Piece Calculation
+  // Sync high score to local storage
+  useEffect(() => {
+    if (score > highScore) {
+      setHighScore(score);
+      localStorage.setItem('modernTetrisHighScore', score.toString());
+    }
+  }, [score, highScore]);
+
   const getGhostPos = () => {
     let dropY = 0;
     while (!checkCollision({ ...player, pos: { x: player.pos.x, y: player.pos.y + dropY } }, board, { x: 0, y: 1 })) {
       dropY++;
-      // THE BUG FIX: Prevents infinite loops when testing empty/invisible blocks
       if (dropY > 25) break; 
     }
     return player.pos.y + dropY;
@@ -42,14 +53,11 @@ export const useTetris = () => {
   const playerRotate = useCallback(() => {
     const clonedPlayer = JSON.parse(JSON.stringify(player));
     clonedPlayer.tetromino = rotate(clonedPlayer.tetromino);
-    
-    // THE BUG FIX: Removed unused 'pos' variable to satisfy TypeScript
-    // Wall kick 
     let offset = 1;
     while (checkCollision(clonedPlayer, board, { x: 0, y: 0 })) {
       clonedPlayer.pos.x += offset;
       offset = -(offset + (offset > 0 ? 1 : -1));
-      if (Math.abs(offset) > clonedPlayer.tetromino[0].length) return; // Cannot rotate
+      if (Math.abs(offset) > clonedPlayer.tetromino[0].length) return; 
     }
     setPlayer(clonedPlayer);
   }, [player, board, rotate]);
@@ -67,10 +75,8 @@ export const useTetris = () => {
     setCanHold(false);
   }, [canHold, player, holdPiece, spawnPiece, gameOver]);
 
-  // Main game loop logic
   useEffect(() => {
     if (gameOver || isPaused) return;
-
     let dropSpeed = 1000 / level + 200;
     const drop = () => {
       if (!checkCollision(player, board, { x: 0, y: 1 })) {
@@ -83,17 +89,14 @@ export const useTetris = () => {
         updatePlayerPos({ x: 0, y: 0, collided: true });
       }
     };
-
     const interval = setInterval(drop, dropSpeed);
     return () => clearInterval(interval);
   }, [player, board, gameOver, isPaused, level]);
 
-  // Board Update & Line Clear
   useEffect(() => {
     if (!player.collided) return;
 
     setBoard(prev => {
-      // 1. Draw merged piece
       const newBoard = prev.map(row => [...row]);
       player.tetromino.forEach((row: any, y: number) => {
         row.forEach((value: any, x: number) => {
@@ -103,7 +106,6 @@ export const useTetris = () => {
         });
       });
 
-      // 2. Sweep lines
       let linesCleared = 0;
       const sweptBoard = newBoard.reduce((ack, row) => {
         if (row.findIndex((cell: any) => cell[0] === 0) === -1) {
@@ -118,6 +120,7 @@ export const useTetris = () => {
       if (linesCleared > 0) {
         setLines(prev => prev + linesCleared);
         setScore(prev => prev + [40, 100, 300, 1200][linesCleared - 1] * level);
+        setLastClear(Date.now()); // Trigger animation
         if (lines + linesCleared >= level * 10) setLevel(prev => prev + 1);
       }
 
@@ -137,5 +140,5 @@ export const useTetris = () => {
     spawnPiece();
   };
 
-  return { board, player, score, level, lines, gameOver, isPaused, setIsPaused, startGame, updatePlayerPos, playerRotate, nextPiece, holdPiece, triggerHold, getGhostPos };
+  return { board, player, score, highScore, level, lines, gameOver, isPaused, setIsPaused, startGame, updatePlayerPos, playerRotate, nextPiece, holdPiece, triggerHold, getGhostPos, lastClear };
 };
