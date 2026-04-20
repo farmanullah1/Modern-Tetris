@@ -14,9 +14,16 @@ const App = () => {
     document.body.className = THEMES[themeIndex];
   }, [themeIndex]);
 
+  // Movement Logic
   const move = (dir: number) => {
     if (!gameOver && !isPaused && !checkCollision(player, board, { x: dir, y: 0 })) {
       updatePlayerPos({ x: dir, y: 0, collided: false });
+    }
+  };
+
+  const softDrop = () => {
+    if (!gameOver && !isPaused && !checkCollision(player, board, { x: 0, y: 1 })) {
+      updatePlayerPos({ x: 0, y: 1, collided: false });
     }
   };
 
@@ -25,18 +32,16 @@ const App = () => {
     let dropY = getGhostPos() - player.pos.y;
     updatePlayerPos({ x: 0, y: dropY, collided: true });
     
-    // Trigger screen shake animation
     setShake(true);
     setTimeout(() => setShake(false), 150);
   };
 
+  // Keyboard Controls
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (gameOver) return;
     if (e.key === 'ArrowLeft') move(-1);
     if (e.key === 'ArrowRight') move(1);
-    if (e.key === 'ArrowDown') {
-      if (!checkCollision(player, board, { x: 0, y: 1 })) updatePlayerPos({ x: 0, y: 1, collided: false });
-    }
+    if (e.key === 'ArrowDown') softDrop();
     if (e.key === 'ArrowUp') playerRotate();
     if (e.key === ' ') hardDrop();
     if (e.key === 'c' || e.key === 'C') triggerHold();
@@ -82,10 +87,10 @@ const App = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 outline-none" role="button" tabIndex={0} onKeyDown={handleKeyDown}>
-      <div className="glass-wrapper flex flex-col md:flex-row gap-6 p-6 md:p-8 w-full max-w-5xl relative">
+      <div className="glass-wrapper flex flex-col md:flex-row gap-6 p-6 md:p-8 w-full max-w-5xl relative select-none">
         
         {/* Left Stats */}
-        <aside className="flex flex-row md:flex-col gap-4 w-full md:w-56 order-2 md:order-1">
+        <aside className="flex flex-row md:flex-col gap-4 w-full md:w-56 order-2 md:order-1 hidden md:flex">
           <MiniGrid piece={holdPiece} title="Hold (C)" />
           <div className="glass-panel w-full p-5 flex flex-col gap-5 justify-between">
             <div><span className="block text-[10px] uppercase opacity-70 tracking-wider">High Score</span><span className="text-xl font-black text-[#00f2fe]">{highScore}</span></div>
@@ -97,7 +102,7 @@ const App = () => {
         </aside>
 
         {/* Center Board */}
-        <main className="flex-1 order-1 md:order-2 flex justify-center relative">
+        <main className="flex-1 order-1 md:order-2 flex justify-center relative touch-none">
           <div key={lastClear} className={`tetris-board ${shake ? 'shake-animation' : ''} ${lastClear ? 'flash-animation' : ''}`}>
             {renderBoard().map((row, y) => row.map((cell: any, x: number) => (
               <div key={`${x}-${y}`} className="cell" 
@@ -113,7 +118,7 @@ const App = () => {
           
           {/* Overlays */}
           {gameOver && <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center rounded-xl backdrop-blur-md z-10 border border-white/10 shadow-2xl">
-              <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400 mb-6 drop-shadow-lg">GAME OVER</h2>
+              <h2 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-400 mb-6 drop-shadow-lg text-center">GAME OVER</h2>
               <button className="btn-primary px-8 py-3 rounded-lg font-bold text-lg tracking-widest" onClick={startGame}>TRY AGAIN</button>
           </div>}
           {isPaused && !gameOver && <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-xl backdrop-blur-md z-10 border border-white/10">
@@ -122,7 +127,7 @@ const App = () => {
         </main>
 
         {/* Right Controls */}
-        <aside className="flex flex-row md:flex-col gap-4 w-full md:w-56 order-3">
+        <aside className="flex flex-row md:flex-col gap-4 w-full md:w-56 order-3 hidden md:flex">
           <MiniGrid piece={nextPiece} title="Next" />
           <div className="flex flex-col gap-4 mt-auto w-full">
             <button className="btn-primary w-full py-4 rounded-xl font-bold shadow-lg tracking-widest text-sm" onClick={startGame}>
@@ -138,13 +143,37 @@ const App = () => {
         </aside>
       </div>
 
-      {/* Mobile Controls */}
-      <div className="grid grid-cols-4 gap-2 mt-6 md:hidden w-full max-w-[350px]">
-        <button className="btn-glass p-5 rounded-xl active:bg-white/20 text-xl font-bold" onClick={() => move(-1)}>←</button>
-        <button className="btn-glass p-5 rounded-xl active:bg-white/20 text-xl font-bold" onClick={playerRotate}>↻</button>
-        <button className="btn-glass p-5 rounded-xl active:bg-white/20 text-xl font-bold" onClick={() => move(1)}>→</button>
-        <button className="btn-glass p-5 rounded-xl active:bg-white/20 text-sm font-bold" onClick={triggerHold}>HLD</button>
-        <button className="btn-primary p-5 rounded-xl col-span-4 text-[#0f0c29] font-black tracking-widest" onClick={hardDrop}>HARD DROP</button>
+      {/* MOBILE-ONLY UI (Visible only on small screens) */}
+      <div className="flex flex-col md:hidden w-full max-w-[380px] mt-4 gap-4 select-none touch-manipulation">
+        
+        {/* Mobile Stats Bar */}
+        <div className="flex justify-between items-center glass-panel px-4 py-2 rounded-xl">
+           <div className="text-center"><span className="block text-[10px] opacity-70">SCORE</span><span className="font-bold text-lg">{score}</span></div>
+           <div className="text-center"><span className="block text-[10px] opacity-70">LEVEL</span><span className="font-bold text-lg">{level}</span></div>
+           <div className="text-center"><span className="block text-[10px] opacity-70">LINES</span><span className="font-bold text-lg">{lines}</span></div>
+           <button className="btn-glass p-2 rounded-lg text-xs font-bold" onClick={() => setIsPaused(p => !p)}>⏸</button>
+        </div>
+
+        {/* Action Buttons Row */}
+        <div className="grid grid-cols-3 gap-2">
+          <button className="btn-glass py-4 rounded-xl active:bg-white/20 font-bold flex flex-col items-center justify-center gap-1" onClick={triggerHold}>
+            <span className="text-xl">⇄</span><span className="text-[10px] tracking-widest">HOLD</span>
+          </button>
+          <button className="btn-glass py-4 rounded-xl active:bg-white/20 font-bold flex flex-col items-center justify-center gap-1" onClick={playerRotate}>
+            <span className="text-xl">↻</span><span className="text-[10px] tracking-widest">ROTATE</span>
+          </button>
+          <button className="btn-primary py-4 rounded-xl text-[#0f0c29] font-black flex flex-col items-center justify-center gap-1" onClick={hardDrop}>
+            <span className="text-xl">⤓</span><span className="text-[10px] tracking-widest">HARD DROP</span>
+          </button>
+        </div>
+
+        {/* Movement Row */}
+        <div className="grid grid-cols-3 gap-2">
+          <button className="btn-glass py-6 rounded-xl active:bg-white/20 text-2xl font-bold" onClick={() => move(-1)}>←</button>
+          <button className="btn-glass py-6 rounded-xl active:bg-white/20 text-2xl font-bold" onClick={softDrop}>↓</button>
+          <button className="btn-glass py-6 rounded-xl active:bg-white/20 text-2xl font-bold" onClick={() => move(1)}>→</button>
+        </div>
+
       </div>
     </div>
   );
