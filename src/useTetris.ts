@@ -18,6 +18,8 @@ export const useTetris = () => {
     let dropY = 0;
     while (!checkCollision({ ...player, pos: { x: player.pos.x, y: player.pos.y + dropY } }, board, { x: 0, y: 1 })) {
       dropY++;
+      // THE BUG FIX: Prevents infinite loops when testing empty/invisible blocks
+      if (dropY > 25) break; 
     }
     return player.pos.y + dropY;
   };
@@ -40,13 +42,14 @@ export const useTetris = () => {
   const playerRotate = useCallback(() => {
     const clonedPlayer = JSON.parse(JSON.stringify(player));
     clonedPlayer.tetromino = rotate(clonedPlayer.tetromino);
-    // Wall kick
-    const pos = clonedPlayer.pos.x;
+    
+    // THE BUG FIX: Removed unused 'pos' variable to satisfy TypeScript
+    // Wall kick 
     let offset = 1;
     while (checkCollision(clonedPlayer, board, { x: 0, y: 0 })) {
       clonedPlayer.pos.x += offset;
       offset = -(offset + (offset > 0 ? 1 : -1));
-      if (offset > clonedPlayer.tetromino[0].length) return; // Cannot rotate
+      if (Math.abs(offset) > clonedPlayer.tetromino[0].length) return; // Cannot rotate
     }
     setPlayer(clonedPlayer);
   }, [player, board, rotate]);
