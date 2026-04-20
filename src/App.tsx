@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import './index.css';
 import { useBoard } from './hooks/useBoard';
 import { useGameStatus } from './hooks/useGameStatus';
@@ -7,11 +7,11 @@ import { createStage, checkCollision } from './gameHelpers';
 
 const App = () => {
   const [theme, setTheme] = useState('dark');
-  const [dropTime, setDropTime] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
 
   const [player, updatePlayerPos, resetPlayer] = usePlayer();
-  const [board, setBoard] = useBoard(player, resetPlayer);
+  // Removed resetPlayer from here to fix the unused variable error in useBoard
+  const [board, setBoard] = useBoard(player); 
   const [score, setScore, rows, setRows, level, setLevel] = useGameStatus();
 
   useEffect(() => {
@@ -19,7 +19,7 @@ const App = () => {
   }, [theme]);
 
   const toggleTheme = () => {
-    const themes = ['light', 'dark']; // Add skins here later
+    const themes = ['light', 'dark']; 
     const currentIndex = themes.indexOf(theme);
     setTheme(themes[(currentIndex + 1) % themes.length]);
   };
@@ -32,7 +32,6 @@ const App = () => {
 
   const startGame = () => {
     setBoard(createStage());
-    setDropTime(1000);
     resetPlayer();
     setGameOver(false);
     setScore(0);
@@ -47,7 +46,6 @@ const App = () => {
       if (player.pos.y < 1) {
         console.log("GAME OVER!");
         setGameOver(true);
-        setDropTime(null);
       }
       updatePlayerPos({ x: 0, y: 0, collided: true });
     }
